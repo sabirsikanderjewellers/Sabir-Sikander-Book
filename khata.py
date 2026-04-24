@@ -1,23 +1,25 @@
 import streamlit as st
-import pandas as pd
+from streamlit_gsheets import GSheetsConnection
 from datetime import date
-from shillelagh.backends.apsw.db import connect
+import pandas as pd
 
 # صفحہ کی سیٹنگ
 st.set_page_config(page_title="Digital Khata Book", layout="wide")
 
-# آپ کی گوگل شیٹ کا لنک
-sheet_url = "https://docs.google.com/spreadsheets/d/1iev-e2cWP15HhNXxT1j-Zkg-By885HpmlC1IgvXtpSA/edit#gid=0"
-
 st.title("📔 ڈیجیٹل کھاتہ بک - اکاؤنٹ مینجمنٹ سسٹم")
 
-# سائیڈ بار مینو
+# گوگل شیٹ کے ساتھ کنکشن
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+# ڈیٹا پڑھنا (تاکہ ہیڈنگز کا پتہ چل سکے)
+existing_data = conn.read(worksheet="Sheet1", usecols=[0,1,2,3,4,5], ttl=5)
+existing_data = existing_data.dropna(how="all")
+
 menu = ["نئی انٹری", "ریکارڈ دیکھیں"]
 choice = st.sidebar.selectbox("مینو منتخب کریں", menu)
 
 if choice == "نئی انٹری":
     st.subheader("نیا کھاتہ اندراج فارم")
-    
     with st.form("khata_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
@@ -33,14 +35,25 @@ if choice == "نئی انٹری":
         
         if submit:
             if name and amount > 0:
-                # یہاں ڈیٹا سیو کرنے کا لاجک آئے گا
-                st.success(f"شکریہ! {name} کا {amount} روپے کا اندراج ہو گیا ہے۔")
-                st.info("نوٹ: ڈیٹا ابھی شیٹ میں بھیجنے کے لیے کنکشن سیٹ ہو رہا ہے۔")
+                # نیا ڈیٹا تیار کرنا
+                new_entry = pd.DataFrame([{
+                    "Name": name,
+                    "Phone": phone,
+                    "Type": khat_type,
+                    "Amount": amount,
+                    "Detail": detail,
+                    "Date": str(today)
+                }])
+                
+                # پرانے ڈیٹا میں نیا ڈیٹا شامل کرنا
+                updated_df = pd.concat([existing_data, new_entry], ignore_index=True)
+                
+                # گوگل شیٹ میں اپ ڈیٹ کرنا
+                conn.update(worksheet="Sheet1", data=updated_df)
+                st.success(f"شکریہ! {name} کا اندراج شیٹ میں محفوظ ہو گیا ہے۔")
             else:
                 st.error("براہ کرم نام اور رقم درست درج کریں۔")
 
 elif choice == "ریکارڈ دیکھیں":
     st.subheader("تمام ریکارڈ")
-    st.write("آپ کا ڈیٹا نیچے دی گئی گوگل شیٹ میں محفوظ ہو رہا ہے:")
-    st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ") # یہ عارضی ہے
-    st.link_button("گوگل شیٹ کھولیں", sheet_url)
+    st.dataframe(existing_data)

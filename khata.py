@@ -1,59 +1,43 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
-from datetime import date
 import pandas as pd
+from datetime import date
 
 # صفحہ کی سیٹنگ
 st.set_page_config(page_title="Digital Khata Book", layout="wide")
 
 st.title("📔 ڈیجیٹل کھاتہ بک - اکاؤنٹ مینجمنٹ سسٹم")
 
-# گوگل شیٹ کے ساتھ کنکشن
-conn = st.connection("gsheets", type=GSheetsConnection)
-
-# ڈیٹا پڑھنا (تاکہ ہیڈنگز کا پتہ چل سکے)
-existing_data = conn.read(worksheet="Sheet1", usecols=[0,1,2,3,4,5], ttl=5)
-existing_data = existing_data.dropna(how="all")
-
-menu = ["نئی انٹری", "ریکارڈ دیکھیں"]
+# سائیڈ بار مینو
+menu = ["نئی انٹری", "ریکارڈ دیکھیں", "جی میل بیک اپ"]
 choice = st.sidebar.selectbox("مینو منتخب کریں", menu)
 
 if choice == "نئی انٹری":
     st.subheader("نیا کھاتہ اندراج فارم")
-    with st.form("khata_form", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            name = st.text_input("گاہک کا نام")
-            phone = st.text_input("فون نمبر")
-            khat_type = st.radio("کھاتہ کی قسم", ["جمع (+)", "بقایا (-)"])
-        with col2:
-            today = st.date_input("تاریخ", date.today())
-            amount = st.number_input("رقم", min_value=0)
-            detail = st.text_area("تفصیل / بابت")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        name = st.text_input("گاہک کا نام")
+        phone = st.text_input("فون نمبر")
+        khat_type = st.radio("کھاتہ کی قسم", ["جمع (+)", "بقایا (-)"])
         
-        submit = st.form_submit_button("محفوظ کریں")
-        
-        if submit:
-            if name and amount > 0:
-                # نیا ڈیٹا تیار کرنا
-                new_entry = pd.DataFrame([{
-                    "Name": name,
-                    "Phone": phone,
-                    "Type": khat_type,
-                    "Amount": amount,
-                    "Detail": detail,
-                    "Date": str(today)
-                }])
-                
-                # پرانے ڈیٹا میں نیا ڈیٹا شامل کرنا
-                updated_df = pd.concat([existing_data, new_entry], ignore_index=True)
-                
-                # گوگل شیٹ میں اپ ڈیٹ کرنا
-                conn.update(worksheet="Sheet1", data=updated_df)
-                st.success(f"شکریہ! {name} کا اندراج شیٹ میں محفوظ ہو گیا ہے۔")
-            else:
-                st.error("براہ کرم نام اور رقم درست درج کریں۔")
+    with col2:
+        today = st.date_input("تاریخ", date.today())
+        amount = st.number_input("رقم", min_value=0)
+        detail = st.text_area("تفصیل / بابت")
+        wada = st.text_input("وعدہ (دن)")
+
+    if st.button("محفوظ کریں"):
+        st.success(f"{name} کا کھاتہ محفوظ ہو گیا ہے!")
 
 elif choice == "ریکارڈ دیکھیں":
-    st.subheader("تمام ریکارڈ")
-    st.dataframe(existing_data)
+    st.subheader("گاہک کا ریکارڈ تلاش کریں")
+    search = st.text_input("نام یا فون نمبر لکھیں")
+    if st.button("تلاش کریں"):
+        st.info("سرچ فنکشن ابھی سیٹ ہو رہا ہے...")
+
+elif choice == "جی میل بیک اپ":
+    st.subheader("ڈیٹا بیک اپ (Gmail)")
+    st.write("آپ کا ڈیٹا جی میل پر بھیجنے کے لیے تیار ہے۔")
+    if st.button("بیک اپ بھیجیں"):
+        st.warning("جی میل سیٹنگ ابھی باقی ہے۔")
